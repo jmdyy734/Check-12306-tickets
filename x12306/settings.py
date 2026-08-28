@@ -59,6 +59,11 @@ DEFAULT_TIMEOUT = 5
 DEFAULT_BASE_URL = "https://kyfw.12306.cn/otn/leftTicket"
 DEFAULT_TRAINNO_URL = "https://kyfw.12306.cn/otn/czxx/queryByTrainNo"
 
+# 工具专用会话：不跟随系统代理。Windows 系统代理常被 VPN/加速器软件设置，
+# 代理失效时会导致 12306 请求 SSL 握手失败（curl 能通、Python 失败就是它）
+session = requests.Session()
+session.trust_env = False
+
 
 class Singleton(type):
     _instances = {}
@@ -201,7 +206,7 @@ class Settings(metaclass=Singleton):
         retries = 1
         while True:
             try:
-                r = requests.get(self.init_url, headers=self.headers, timeout=self.timeout)
+                r = session.get(self.init_url, headers=self.headers, timeout=self.timeout)
                 if r.status_code == 200:
                     m = re.search(r"var CLeftTicketUrl = \'(.*?)\'", r.text)
                     self.query_url = DEFAULT_BASE_URL + "/" + m.group(1).split("/")[1]

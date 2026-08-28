@@ -123,6 +123,7 @@ class TrainTable:
     def __init__(self):
         self.trains_list = []
         self._session = requests.Session()
+        self._session.trust_env = False  # 不跟随系统代理（见 settings.py 说明）
         self._session.headers.update(settings.headers)
 
     @property

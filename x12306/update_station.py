@@ -4,11 +4,15 @@ import re
 DEFAULT_BASE_URL = "https://kyfw.12306.cn/otn/leftTicket"
 DEFAULT_STATION_URL = "https://kyfw.12306.cn/otn/resources/js/framework/station_name.js"
 
+# 不跟随系统代理（系统代理常被 VPN/加速器设置，失效时会导致请求失败）
+_session = requests.Session()
+_session.trust_env = False
+
 
 def update_station(path: str = "./x12306/data/stations.txt") -> None:
     # update station information
     init_url = DEFAULT_BASE_URL + "/init"
-    response = requests.get(init_url)
+    response = _session.get(init_url)
     if response.status_code == 200:
         pattern = re.compile(r"station_version=([\d\.]+)")
         station_version = pattern.search(response.text)
@@ -18,7 +22,7 @@ def update_station(path: str = "./x12306/data/stations.txt") -> None:
                 DEFAULT_STATION_URL + f"?station_version={station_version.group(1)}"
             )
 
-            response = requests.get(station_url)
+            response = _session.get(station_url)
             if response.status_code == 200:
                 pattern = re.compile(r"var station_names ='(.*?)';")
                 station_names = pattern.search(response.text)
