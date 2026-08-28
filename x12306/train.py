@@ -12,10 +12,9 @@
 import time
 import re
 import requests
-import prettytable as pt
 
 from .settings import settings
-from .utils import colorize
+from .utils import colorize, format_table
 
 
 class Train:
@@ -36,25 +35,15 @@ class Train:
         self.remaining = []
 
     def __str__(self):
-        colored_remaining = [
-            colorize(s, "green") if s != "无" and s != "--" else s
-            for s in self.remaining
-        ]
-        remaining_seats = "/".join(colored_remaining)
-        if re.match("[GCD]", self.no):
-            colored_no = colorize(self.no, self.no[0].lower())
-        else:
-            colored_no = colorize(self.no, "o")
-        s = "{:^5} | {:^5} | {:\u3000<4} | {:\u3000<4} | {:^5} | {} | {:^5}".format(
-            colored_no,
-            self.start_time,
-            self._fs,
-            self._ts,
-            self.end_time,
-            remaining_seats,
-            self.duration,
+        """调试信息：车次 + 各座位余票（带座位名）"""
+        seats = " ".join(
+            "%s:%s" % (name, r)
+            for name, r in zip(settings.seats_list, self.remaining)
         )
-        return s
+        return "%s %s->%s %s-%s %s" % (
+            self.no, self._fs, self._ts,
+            self.start_time, self.end_time, seats,
+        )
 
     def __eq__(self, other):
         """车次、出发站和目的地相同判断为相等"""
@@ -101,26 +90,29 @@ class Train:
         return False
 
     @property
+    def remaining_display(self) -> list:
+        """各座位类型的余票显示文本（带颜色），与 settings.seats_list 一一对应"""
+        display = []
+        for r in self.remaining:
+            if r == "无":
+                display.append(colorize("无", "red"))
+            elif r.isdigit():
+                display.append(colorize(r + "张", "green"))
+            elif r == "有":
+                display.append(colorize("有", "green"))
+            else:
+                display.append(colorize("--", "gray"))
+        return display
+
+    @property
     def row(self) -> list:
-        """关键信息列表"""
-        colored_remaining = [
-            colorize(s, "green") if s != "无" and s != "--" else s
-            for s in self.remaining
-        ]
-        remaining_seats = "/".join(colored_remaining)
+        """表格一行：车次、发车、出发站、到达站、到达、各座位余票、历时"""
         if re.match("[GCD]", self.no):
             colored_no = colorize(self.no, self.no[0].lower())
         else:
             colored_no = colorize(self.no, "o")
-        return [
-            colored_no,
-            self.start_time,
-            self._fs,
-            self._ts,
-            self.end_time,
-            remaining_seats,
-            self.duration,
-        ]
+        return ([colored_no, self.start_time, self._fs, self._ts, self.end_time]
+                + self.remaining_display + [self.duration])
 
 
 class TrainTable:
@@ -141,13 +133,13 @@ class TrainTable:
     def echo(self):
         """
         对外调用的方法，用来打印查询结果
+        每个座位类型单独一列，比合并成"余票"列更直观
         """
-        tb = pt.PrettyTable()
-        tb.field_names = ["车次", "发车", "出发站", "到达站", "到达", "余票", "历时"]
+        headers = (["车次", "发车", "出发站", "到达站", "到达"]
+                   + settings.seats_list + ["历时"])
         self.cleanup()
-        for train in self.trains_list:
-            tb.add_row(train.row)
-        print(tb)
+        rows = [train.row for train in self.trains_list]
+        print(format_table(headers, rows))
 
     def cleanup(self):
         """处理trains_list，排序和删除无效数据"""

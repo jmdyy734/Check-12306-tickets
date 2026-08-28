@@ -106,3 +106,13 @@ venv.bak/
 .idea/
 .vscode/
 test.py
+
+# 本项目的本地文件（含个人常用路线，勿上传）
+gui_config.json
+gui_error.log
+selftest_result.txt
+
+# 打包产物（exe 请通过 GitHub Releases 分发，勿提交进仓库）
+查票工具.exe
+*.exe
+!查票工具.spec
