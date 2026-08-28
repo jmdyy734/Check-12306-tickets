@@ -12,6 +12,7 @@
 
 import re
 import sys
+import time
 import platform
 import hashlib
 import secrets
@@ -195,17 +196,25 @@ class Settings(metaclass=Singleton):
             ).readlines()
 
     def update_query_url(self):
-        try:
-            r = requests.get(self.init_url, headers=self.headers, timeout=self.timeout)
-            if r.status_code == 200:
-                m = re.search(r"var CLeftTicketUrl = \'(.*?)\'", r.text)
-                self.query_url = DEFAULT_BASE_URL + "/" + m.group(1).split("/")[1]
-            else:
+        """获取最新查询接口地址。网络抖动/12306 暂时拒绝时自动重试，
+        超过 max_retries 次才退出，避免一次失败就让整个工具退出"""
+        retries = 1
+        while True:
+            try:
+                r = requests.get(self.init_url, headers=self.headers, timeout=self.timeout)
+                if r.status_code == 200:
+                    m = re.search(r"var CLeftTicketUrl = \'(.*?)\'", r.text)
+                    self.query_url = DEFAULT_BASE_URL + "/" + m.group(1).split("/")[1]
+                    return
                 print("Failed to update query url.")
-                sys.exit(-1)
-        except Exception as e:
-            print(e)
-            print("Failed to update query url.")
+            except Exception as e:
+                print(e)
+                print("Failed to update query url.")
+            if retries < self.max_retries:
+                time.sleep(retries * self.timeout)
+                retries += 1
+                print("正在重试获取查询接口（第 %d 次）..." % retries)
+                continue
             sys.exit(-1)
 
     def __str__(self):
