@@ -350,7 +350,8 @@ class App:
         row2.pack(fill="x", **pad)
 
         self.seat_vars = {}
-        saved_seats = self.config.get("seats") or SEAT_OPTIONS
+        # 默认不勾选任何座位（都不勾选 = 显示全部）；勾选过的座位会保存到配置里
+        saved_seats = self.config.get("seats", [])
 
         group_hsr = ["商务座", "特等座", "一等座", "二等座", "动卧", "无座"]
         group_ktz = ["高级软卧", "软卧", "硬卧", "软座", "硬座", "其他"]
